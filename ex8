@@ -1,0 +1,107 @@
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+
+// Function to create the Playfair cipher table
+void createCipherTable(char key[], char table[5][5]) {
+    int used[26] = {0}; // Track used letters (I/J are treated as the same)
+    int idx = 0;
+
+    // Fill the table with the key
+    for (int i = 0; key[i] != '\0'; i++) {
+        char ch = toupper(key[i]);
+        if (ch == 'J') ch = 'I'; // Combine I and J
+        if (!used[ch - 'A']) {
+            table[idx / 5][idx % 5] = ch;
+            used[ch - 'A'] = 1;
+            idx++;
+        }
+    }
+
+    // Fill the table with remaining letters
+    for (char ch = 'A'; ch <= 'Z'; ch++) {
+        if (ch == 'J') continue; // Skip J as it's combined with I
+        if (!used[ch - 'A']) {
+            table[idx / 5][idx % 5] = ch;
+            used[ch - 'A'] = 1;
+            idx++;
+        }
+    }
+}
+
+// Function to find the position of a letter in the cipher table
+void findPosition(char table[5][5], char ch, int *row, int *col) {
+    if (ch == 'J') ch = 'I'; // Combine I and J
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 5; j++) {
+            if (table[i][j] == ch) {
+                *row = i;
+                *col = j;
+                return;
+            }
+        }
+    }
+}
+
+// Function to decrypt a pair of letters
+void decryptPair(char table[5][5], char digraph[2], char *decrypted) {
+    int row1, col1, row2, col2;
+    findPosition(table, digraph[0], &row1, &col1);
+    findPosition(table, digraph[1], &row2, &col2);
+
+    if (row1 == row2) {
+        // Same row: Move left
+        decrypted[0] = table[row1][(col1 + 4) % 5];
+        decrypted[1] = table[row2][(col2 + 4) % 5];
+    } else if (col1 == col2) {
+        // Same column: Move up
+        decrypted[0] = table[(row1 + 4) % 5][col1];
+        decrypted[1] = table[(row2 + 4) % 5][col2];
+    } else {
+        // Rectangle: Swap columns
+        decrypted[0] = table[row1][col2];
+        decrypted[1] = table[row2][col1];
+    }
+}
+
+// Function to decrypt the entire ciphertext
+void decryptMessage(char table[5][5], char ciphertext[], char plaintext[]) {
+    int len = strlen(ciphertext);
+    int idx = 0;
+
+    for (int i = 0; i < len; i += 2) {
+        char digraph[2] = {ciphertext[i], ciphertext[i + 1]};
+        char decrypted[2];
+        decryptPair(table, digraph, decrypted);
+        plaintext[idx++] = decrypted[0];
+        plaintext[idx++] = decrypted[1];
+    }
+    plaintext[idx] = '\0';
+}
+
+int main() {
+    // Key and ciphertext
+    char key[] = "PLAYFAIR";
+    char ciphertext[] = "KXJEYUREBEZWEHEWRYTUHEYFSKREHEGOYFIWTTTUOLKSYCAJPOBOTEIZONTXBYBNTGONEYCUZWRGDSONSXBOUYWRHEBAAHYUSEDQ";
+    char table[5][5], plaintext[sizeof(ciphertext) + 1];
+
+    // Create the cipher table
+    createCipherTable(key, table);
+
+    printf("Playfair Cipher Table:\n");
+    for (int i = 0; i < 5; i++) {
+        for (int j = 0; j < 5; j++) {
+            printf("%c ", table[i][j]);
+        }
+        printf("\n");
+    }
+
+    // Decrypt the message
+    decryptMessage(table, ciphertext, plaintext);
+
+    // Output results
+    printf("\nCiphertext: %s\n", ciphertext);
+    printf("Decrypted Message: %s\n", plaintext);
+
+    return 0;
+}
