@@ -1,0 +1,26 @@
+#include <stdio.h>
+#include <math.h>
+
+#define FACTORIAL 25
+
+// Function to calculate the factorial using logarithms
+double log2_factorial(int n) {
+    double log2_fact = 0.0;
+    for (int i = 1; i <= n; i++) {
+        log2_fact += log2(i);
+    }
+    return log2_fact;
+}
+
+int main() {
+    // (a) Calculate total keys (approximate power of 2)
+    double log2_total_keys = log2_factorial(FACTORIAL);
+    printf("Approximate power of 2 for total keys: %.2lf\n", log2_total_keys);
+
+    // (b) Approximation for effectively unique keys
+    // Accounting for symmetry: divide by 4! for rows, 4! for columns, and mirror effects
+    double log2_unique_keys = log2_total_keys - 2 * log2_factorial(5) - 1; // Approximate correction
+    printf("Approximate power of 2 for effectively unique keys: %.2lf\n", log2_unique_keys);
+
+    return 0;
+}
