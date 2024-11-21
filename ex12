@@ -1,0 +1,105 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+// Function to calculate modular inverse of a number under modulo 26
+int modInverse(int a, int m) {
+    for (int x = 1; x < m; x++) {
+        if ((a * x) % m == 1)
+            return x;
+    }
+    return -1; // No modular inverse
+}
+
+// Function to find determinant of a 2x2 matrix modulo 26
+int determinantMod26(int matrix[2][2]) {
+    int det = matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
+    det = (det % 26 + 26) % 26; // Ensure det is positive
+    return det;
+}
+
+// Function to compute inverse of a 2x2 matrix modulo 26
+void inverseMatrixMod26(int key[2][2], int inverse[2][2]) {
+    int det = determinantMod26(key);
+    int detInv = modInverse(det, 26);
+    if (detInv == -1) {
+        printf("Matrix is not invertible under modulo 26.\n");
+        exit(1);
+    }
+
+    inverse[0][0] = ( key[1][1] * detInv) % 26;
+    inverse[0][1] = (-key[0][1] * detInv) % 26;
+    inverse[1][0] = (-key[1][0] * detInv) % 26;
+    inverse[1][1] = ( key[0][0] * detInv) % 26;
+
+    // Ensure all values are positive
+    for (int i = 0; i < 2; i++)
+        for (int j = 0; j < 2; j++)
+            inverse[i][j] = (inverse[i][j] + 26) % 26;
+}
+
+// Function to perform matrix multiplication mod 26
+void matrixMultiplyMod26(int key[2][2], int vector[2], int result[2]) {
+    result[0] = (key[0][0] * vector[0] + key[0][1] * vector[1]) % 26;
+    result[1] = (key[1][0] * vector[0] + key[1][1] * vector[1]) % 26;
+}
+
+// Function to encrypt plaintext
+void encrypt(char plaintext[], int key[2][2], char ciphertext[]) {
+    int length = strlen(plaintext);
+    for (int i = 0; i < length; i += 2) {
+        int vector[2] = {plaintext[i] - 'A', plaintext[i + 1] - 'A'};
+        int result[2];
+        matrixMultiplyMod26(key, vector, result);
+        ciphertext[i] = result[0] + 'A';
+        ciphertext[i + 1] = result[1] + 'A';
+    }
+    ciphertext[length] = '\0';
+}
+
+// Function to decrypt ciphertext
+void decrypt(char ciphertext[], int inverse[2][2], char plaintext[]) {
+    int length = strlen(ciphertext);
+    for (int i = 0; i < length; i += 2) {
+        int vector[2] = {ciphertext[i] - 'A', ciphertext[i + 1] - 'A'};
+        int result[2];
+        matrixMultiplyMod26(inverse, vector, result);
+        plaintext[i] = result[0] + 'A';
+        plaintext[i + 1] = result[1] + 'A';
+    }
+    plaintext[length] = '\0';
+}
+
+int main() {
+    // Key matrix
+    int key[2][2] = {{9, 4}, {5, 7}};
+    int inverseKey[2][2];
+
+    // Compute inverse key matrix
+    inverseMatrixMod26(key, inverseKey);
+
+    // Input plaintext
+    char plaintext[] = "MEETMEATTHEUSUALPLACEATTENRATHERTHANEIGHTOCLOCK";
+    int length = strlen(plaintext);
+
+    // Ensure plaintext length is even
+    if (length % 2 != 0) {
+        plaintext[length] = 'X'; // Append 'X' as filler
+        plaintext[length + 1] = '\0';
+    }
+
+    // Encrypt
+    char ciphertext[100];
+    encrypt(plaintext, key, ciphertext);
+
+    // Decrypt
+    char decryptedText[100];
+    decrypt(ciphertext, inverseKey, decryptedText);
+
+    // Output results
+    printf("Plaintext: %s\n", plaintext);
+    printf("Ciphertext: %s\n", ciphertext);
+    printf("Decrypted Text: %s\n", decryptedText);
+
+    return 0;
+}
