@@ -1,0 +1,96 @@
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+
+#define ALPHABET_SIZE 26
+
+// English letter frequency (in percentage, ordered by A-Z)
+const double englishFrequencies[ALPHABET_SIZE] = {
+    8.167, 1.492, 2.782, 4.253, 12.702, 2.228, 2.015, 6.094, 6.966, 
+    0.153, 0.772, 4.025, 2.406, 6.749, 7.507, 1.929, 0.095, 5.987, 
+    6.327, 9.056, 2.758, 0.978, 2.360, 0.150, 1.974, 0.074
+};
+
+// Function to calculate frequency score of a string
+double calculateScore(const char *text) {
+    int letterCounts[ALPHABET_SIZE] = {0};
+    int totalLetters = 0;
+
+    // Count letter frequencies in the text
+    for (int i = 0; text[i] != '\0'; i++) {
+        if (isalpha(text[i])) {
+            letterCounts[toupper(text[i]) - 'A']++;
+            totalLetters++;
+        }
+    }
+
+    // Calculate score based on English letter frequencies
+    double score = 0.0;
+    for (int i = 0; i < ALPHABET_SIZE; i++) {
+        double observedFreq = (double)letterCounts[i] / totalLetters * 100;
+        score += observedFreq * englishFrequencies[i];
+    }
+    return score;
+}
+
+// Function to decrypt ciphertext with a given key
+void decryptWithKey(const char *ciphertext, int key, char *plaintext) {
+    for (int i = 0; ciphertext[i] != '\0'; i++) {
+        if (isalpha(ciphertext[i])) {
+            char base = isupper(ciphertext[i]) ? 'A' : 'a';
+            plaintext[i] = (ciphertext[i] - base - key + ALPHABET_SIZE) % ALPHABET_SIZE + base;
+        } else {
+            plaintext[i] = ciphertext[i]; // Preserve non-alphabet characters
+        }
+    }
+    plaintext[strlen(ciphertext)] = '\0';
+}
+
+// Structure to store potential plaintexts with their scores
+typedef struct {
+    char plaintext[100];
+    double score;
+} Candidate;
+
+// Function to perform letter frequency attack
+void frequencyAttack(const char *ciphertext, int topResults) {
+    Candidate candidates[ALPHABET_SIZE];
+
+    // Try all possible keys
+    for (int key = 0; key < ALPHABET_SIZE; key++) {
+        decryptWithKey(ciphertext, key, candidates[key].plaintext);
+        candidates[key].score = calculateScore(candidates[key].plaintext);
+    }
+
+    // Sort candidates by score (descending order)
+    for (int i = 0; i < ALPHABET_SIZE - 1; i++) {
+        for (int j = i + 1; j < ALPHABET_SIZE; j++) {
+            if (candidates[i].score < candidates[j].score) {
+                Candidate temp = candidates[i];
+                candidates[i] = candidates[j];
+                candidates[j] = temp;
+            }
+        }
+    }
+
+    // Print the top results
+    printf("Top %d Possible Plaintexts:\n", topResults);
+    for (int i = 0; i < topResults && i < ALPHABET_SIZE; i++) {
+        printf("Key %2d: %-20s (Score: %.2f)\n", i, candidates[i].plaintext, candidates[i].score);
+    }
+}
+
+int main() {
+    // Example ciphertext (replace this with your input)
+    char ciphertext[] = "WKH TXLFN EURZQ IRA MXPSV RYHU WKH ODCB GRJ";
+
+    // Number of top results to display
+    int topResults = 10;
+
+    printf("Ciphertext: %s\n\n", ciphertext);
+
+    // Perform the letter frequency attack
+    frequencyAttack(ciphertext, topResults);
+
+    return 0;
+}
