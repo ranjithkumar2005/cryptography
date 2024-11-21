@@ -1,0 +1,63 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
+
+// Example S-Box and Permutation functions (simplified placeholders for illustration)
+uint64_t desEncrypt(uint64_t block, uint64_t key) {
+    // Placeholder for DES encryption (this should be a full DES implementation)
+    return (block ^ key); // Simplistic XOR operation for example
+}
+
+uint64_t tripleDesEncrypt(uint64_t block, uint64_t key1, uint64_t key2, uint64_t key3) {
+    // Triple DES: Encrypt -> Decrypt -> Encrypt
+    uint64_t enc1 = desEncrypt(block, key1);
+    uint64_t dec = desEncrypt(enc1, key2); // Decrypt is same as encrypt in this simplified version
+    return desEncrypt(dec, key3);
+}
+
+// CBC Encryption
+void cbcEncrypt(uint64_t *plaintext, uint64_t *ciphertext, int blockCount, uint64_t iv, uint64_t key1, uint64_t key2, uint64_t key3) {
+    uint64_t prevCipherBlock = iv;
+
+    for (int i = 0; i < blockCount; i++) {
+        uint64_t block = plaintext[i] ^ prevCipherBlock; // XOR with previous ciphertext or IV
+        ciphertext[i] = tripleDesEncrypt(block, key1, key2, key3);
+        prevCipherBlock = ciphertext[i]; // Update previous ciphertext
+    }
+}
+
+// Print 64-bit blocks in hexadecimal
+void printBlocks(const char *label, uint64_t *blocks, int count) {
+    printf("%s:\n", label);
+    for (int i = 0; i < count; i++) {
+        printf("Block %d: %016llX\n", i + 1, blocks[i]);
+    }
+}
+
+int main() {
+    // Example 64-bit keys for 3DES
+    uint64_t key1 = 0x133457799BBCDFF1;
+    uint64_t key2 = 0x1F1F1F1F0E0E0E0E;
+    uint64_t key3 = 0x1234567890ABCDEF;
+
+    // Initialization Vector (IV)
+    uint64_t iv = 0xAABB09182736CCDD;
+
+    // Example plaintext (in 64-bit blocks)
+    uint64_t plaintext[] = { 0x5468652071756963, 0x6B2062726F776E20, 0x666F78206A756D70, 0x736F766572206C61 };
+    int blockCount = sizeof(plaintext) / sizeof(plaintext[0]);
+
+    // Array to hold ciphertext
+    uint64_t ciphertext[blockCount];
+
+    // Perform CBC Encryption
+    cbcEncrypt(plaintext, ciphertext, blockCount, iv, key1, key2, key3);
+
+    // Print results
+    printBlocks("Plaintext", plaintext, blockCount);
+    printf("\n");
+    printBlocks("Ciphertext", ciphertext, blockCount);
+
+    return 0;
+}
