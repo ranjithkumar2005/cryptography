@@ -1,0 +1,87 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+// Function to calculate determinant modulo 26
+int determinantMod26(int matrix[2][2]) {
+    int det = matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0];
+    det = (det % 26 + 26) % 26; // Ensure det is positive
+    return det;
+}
+
+// Function to calculate modular inverse under modulo 26
+int modInverse(int a, int m) {
+    for (int x = 1; x < m; x++) {
+        if ((a * x) % m == 1)
+            return x;
+    }
+    return -1; // No modular inverse exists
+}
+
+// Function to compute the inverse of a 2x2 matrix modulo 26
+void inverseMatrixMod26(int matrix[2][2], int inverse[2][2]) {
+    int det = determinantMod26(matrix);
+    int detInv = modInverse(det, 26);
+    if (detInv == -1) {
+        printf("Matrix is not invertible under modulo 26.\n");
+        exit(1);
+    }
+
+    inverse[0][0] = ( matrix[1][1] * detInv) % 26;
+    inverse[0][1] = (-matrix[0][1] * detInv) % 26;
+    inverse[1][0] = (-matrix[1][0] * detInv) % 26;
+    inverse[1][1] = ( matrix[0][0] * detInv) % 26;
+
+    // Ensure all values are positive
+    for (int i = 0; i < 2; i++)
+        for (int j = 0; j < 2; j++)
+            inverse[i][j] = (inverse[i][j] + 26) % 26;
+}
+
+// Function to multiply two 2x2 matrices modulo 26
+void matrixMultiplyMod26(int matrix1[2][2], int matrix2[2][2], int result[2][2]) {
+    for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+            result[i][j] = 0;
+            for (int k = 0; k < 2; k++) {
+                result[i][j] += matrix1[i][k] * matrix2[k][j];
+            }
+            result[i][j] %= 26;
+        }
+    }
+}
+
+// Function to recover the key matrix using plaintext and ciphertext pairs
+void recoverKey(int plaintext[2][2], int ciphertext[2][2], int key[2][2]) {
+    int inversePlaintext[2][2];
+    inverseMatrixMod26(plaintext, inversePlaintext);
+    matrixMultiplyMod26(ciphertext, inversePlaintext, key);
+}
+
+int main() {
+    // Chosen plaintext pairs (numerical representation of letters A=0, B=1, ..., Z=25)
+    int plaintext[2][2] = {
+        {7, 4},  // "HE"
+        {11, 11} // "LL"
+    };
+
+    // Corresponding ciphertext pairs
+    int ciphertext[2][2] = {
+        {17, 3}, // "RD"
+        {19, 9}  // "TJ"
+    };
+
+    // Recover the key matrix
+    int key[2][2];
+    recoverKey(plaintext, ciphertext, key);
+
+    // Print the recovered key matrix
+    printf("Recovered Key Matrix:\n");
+    for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+            printf("%d ", key[i][j]);
+        }
+        printf("\n");
+    }
+
+    return 0;
+}
