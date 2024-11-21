@@ -1,0 +1,81 @@
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+
+// Function to encrypt plaintext using the one-time pad Vigenère cipher
+void encrypt(const char *plaintext, const int key[], int keyLength, char *ciphertext) {
+    int i;
+    for (i = 0; plaintext[i] != '\0'; i++) {
+        if (isalpha(plaintext[i])) {
+            int shift = key[i % keyLength]; // Use the corresponding key for each character
+            ciphertext[i] = ((toupper(plaintext[i]) - 'A' + shift) % 26) + 'A';
+        } else {
+            ciphertext[i] = plaintext[i]; // Keep spaces unchanged
+        }
+    }
+    ciphertext[i] = '\0'; // Null-terminate the ciphertext
+}
+
+// Function to decrypt ciphertext using the one-time pad Vigenère cipher
+void decrypt(const char *ciphertext, const int key[], int keyLength, char *plaintext) {
+    int i;
+    for (i = 0; ciphertext[i] != '\0'; i++) {
+        if (isalpha(ciphertext[i])) {
+            int shift = key[i % keyLength];
+            plaintext[i] = ((toupper(ciphertext[i]) - 'A' - shift + 26) % 26) + 'A';
+        } else {
+            plaintext[i] = ciphertext[i]; // Keep spaces unchanged
+        }
+    }
+    plaintext[i] = '\0'; // Null-terminate the plaintext
+}
+
+// Function to calculate a new key that decrypts ciphertext to a different plaintext
+void findNewKey(const char *ciphertext, const char *desiredPlaintext, int *newKey) {
+    for (int i = 0; ciphertext[i] != '\0'; i++) {
+        if (isalpha(ciphertext[i])) {
+            newKey[i] = (toupper(ciphertext[i]) - toupper(desiredPlaintext[i]) + 26) % 26;
+        } else {
+            newKey[i] = -1; // Space or other characters
+        }
+    }
+}
+
+int main() {
+    // Input plaintext
+    char plaintext[] = "SEND MORE MONEY";
+    int key[] = {9, 0, 1, 7, 23, 15, 21, 14, 11, 11, 2, 8, 9};
+    int keyLength = sizeof(key) / sizeof(key[0]);
+
+    // Encrypt the plaintext
+    char ciphertext[100];
+    encrypt(plaintext, key, keyLength, ciphertext);
+
+    // Print ciphertext
+    printf("Ciphertext: %s\n", ciphertext);
+
+    // Decrypt the ciphertext back to the original plaintext
+    char decryptedText[100];
+    decrypt(ciphertext, key, keyLength, decryptedText);
+
+    // Print decrypted text
+    printf("Decrypted Text: %s\n", decryptedText);
+
+    // Find new key for different plaintext
+    char desiredPlaintext[] = "CASH NOT NEEDED";
+    int newKey[100];
+    findNewKey(ciphertext, desiredPlaintext, newKey);
+
+    // Print the new key
+    printf("New Key: ");
+    for (int i = 0; ciphertext[i] != '\0'; i++) {
+        if (newKey[i] != -1) {
+            printf("%d ", newKey[i]);
+        } else {
+            printf("  ");
+        }
+    }
+    printf("\n");
+
+    return 0;
+}
