@@ -1,0 +1,76 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+// Function to generate a random key stream
+void generate_key_stream(int *key, size_t length) {
+    for (size_t i = 0; i < length; i++) {
+        key[i] = rand() % 26; // Random shift between 0 and 25
+    }
+}
+
+// Function to encrypt plaintext using the one-time pad Vigenère cipher
+void encrypt(char *plaintext, int *key, char *ciphertext) {
+    size_t length = strlen(plaintext);
+    for (size_t i = 0; i < length; i++) {
+        if (plaintext[i] >= 'A' && plaintext[i] <= 'Z') {
+            // For uppercase letters
+            ciphertext[i] = ((plaintext[i] - 'A' + key[i]) % 26) + 'A';
+        } else if (plaintext[i] >= 'a' && plaintext[i] <= 'z') {
+            // For lowercase letters
+            ciphertext[i] = ((plaintext[i] - 'a' + key[i]) % 26) + 'a';
+        } else {
+            // Non-alphabetic characters are copied as is
+            ciphertext[i] = plaintext[i];
+        }
+    }
+    ciphertext[length] = '\0'; // Null-terminate the ciphertext
+}
+
+// Function to decrypt ciphertext using the one-time pad Vigenère cipher
+void decrypt(char *ciphertext, int *key, char *plaintext) {
+    size_t length = strlen(ciphertext);
+    for (size_t i = 0; i < length; i++) {
+        if (ciphertext[i] >= 'A' && ciphertext[i] <= 'Z') {
+            // For uppercase letters
+            plaintext[i] = ((ciphertext[i] - 'A' - key[i] + 26) % 26) + 'A';
+        } else if (ciphertext[i] >= 'a' && ciphertext[i] <= 'z') {
+            // For lowercase letters
+            plaintext[i] = ((ciphertext[i] - 'a' - key[i] + 26) % 26) + 'a';
+        } else {
+            // Non-alphabetic characters are copied as is
+            plaintext[i] = ciphertext[i];
+        }
+    }
+    plaintext[length] = '\0'; // Null-terminate the plaintext
+}
+
+int main() {
+    char plaintext[256];
+    printf("Enter the plaintext: ");
+    fgets(plaintext, sizeof(plaintext), stdin);
+    plaintext[strcspn(plaintext, "\n")] = '\0'; // Remove the trailing newline
+
+    size_t length = strlen(plaintext);
+    int key[length];
+    char ciphertext[256];
+    char decrypted_text[256];
+
+    srand(time(NULL)); // Seed the random number generator
+    generate_key_stream(key, length);
+
+    printf("\nGenerated key stream: ");
+    for (size_t i = 0; i < length; i++) {
+        printf("%d ", key[i]);
+    }
+    printf("\n");
+
+    encrypt(plaintext, key, ciphertext);
+    printf("Encrypted ciphertext: %s\n", ciphertext);
+
+    decrypt(ciphertext, key, decrypted_text);
+    printf("Decrypted plaintext: %s\n", decrypted_text);
+
+    return 0;
+}
