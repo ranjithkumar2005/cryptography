@@ -1,0 +1,94 @@
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+
+// English letter frequencies in descending order (frequency percentages for English language)
+const double english_freqs[100] = {
+    0.082, 0.015, 0.028, 0.043, 0.127, 0.022, 0.020, 0.061, 0.069, 0.002,
+    0.008, 0.040, 0.024, 0.067, 0.075, 0.019, 0.001, 0.060, 0.063, 0.091,
+    0.028, 0.010, 0.023, 0.001, 0.020, 0.001, 0.020
+};
+
+// Function to calculate the score of a ciphertext based on letter frequency
+double score_ciphertext(const char *text) {
+    int letter_count[26] = {0};
+    int length = 0;
+
+    // Count the frequency of each letter (ignoring non-alphabetical characters)
+    for (int i = 0; text[i] != '\0'; i++) {
+        if (isalpha(text[i])) {
+            letter_count[tolower(text[i]) - 'a']++;
+            length++;
+        }
+    }
+
+    // Calculate the frequency distribution for the ciphertext
+    double freq_distribution[26] = {0};
+    for (int i = 0; i < 26; i++) {
+        freq_distribution[i] = (double)letter_count[i] / length;
+    }
+
+    // Calculate the score based on the difference between the expected and observed frequencies
+    double score = 0;
+    for (int i = 0; i < 26; i++) {
+        score += (freq_distribution[i] - english_freqs[i]) * (freq_distribution[i] - english_freqs[i]);
+    }
+    return score; // Lower score is better (more similar to English)
+}
+
+// Function to perform a Caesar cipher shift on a string (plaintext/ciphertext)
+void caesar_cipher_shift(char *text, int shift) {
+    for (int i = 0; text[i] != '\0'; i++) {
+        if (isalpha(text[i])) {
+            char offset = islower(text[i]) ? 'a' : 'A';
+            text[i] = (text[i] - offset + shift) % 26 + offset;
+        }
+    }
+}
+
+// Function to attack the cipher using frequency analysis
+void frequency_attack(const char *ciphertext) {
+    // Array to store possible plaintexts and their corresponding scores
+    char candidates[26][256]; // 26 possible shifts, each holding the shifted text
+    double scores[26];
+
+    // Try all shifts (from 0 to 25)
+    for (int shift = 0; shift < 26; shift++) {
+        // Copy ciphertext and apply the Caesar cipher shift
+        strcpy(candidates[shift], ciphertext);
+        caesar_cipher_shift(candidates[shift], shift);
+
+        // Score the shifted ciphertext
+        scores[shift] = score_ciphertext(candidates[shift]);
+    }
+
+    // Find the top 10 plaintext candidates with the lowest scores (best matches)
+    int top_10[10];
+    for (int i = 0; i < 10; i++) {
+        double min_score = 1e9; // A large number
+        int best_index = -1;
+        for (int j = 0; j < 26; j++) {
+            if (scores[j] < min_score) {
+                min_score = scores[j];
+                best_index = j;
+            }
+        }
+        top_10[i] = best_index;
+        scores[best_index] = 1e9; // Invalidate this score to find the next best
+    }
+
+    // Display the top 10 possible plaintexts
+    printf("Top 10 possible plaintexts based on letter frequency analysis:\n");
+    for (int i = 0; i < 10; i++) {
+        printf("%d: %s\n", i + 1, candidates[top_10[i]]);
+    }
+}
+
+int main() {
+    char ciphertext[] = "Wklv lv d whvw phvvdjh";
+
+    // Perform frequency attack on the ciphertext
+    frequency_attack(ciphertext);
+
+    return 0;
+}
