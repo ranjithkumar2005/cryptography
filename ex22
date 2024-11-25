@@ -1,0 +1,141 @@
+#include <stdio.h>
+#include <stdint.h>
+
+// Permutation tables for S-DES
+const uint8_t IP[8] = {1, 5, 2, 0, 3, 7, 4, 6};         // Initial permutation
+const uint8_t IP_INV[8] = {3, 0, 2, 4, 6, 1, 7, 5};     // Inverse initial permutation
+const uint8_t EP[8] = {3, 0, 1, 2, 1, 2, 3, 0};         // Expansion permutation
+const uint8_t P4[4] = {1, 3, 2, 0};                     // P4 permutation
+const uint8_t P10[10] = {2, 4, 1, 6, 3, 9, 0, 8, 7, 5}; // P10 permutation
+const uint8_t P8[8] = {5, 2, 6, 3, 7, 4, 9, 8};         // P8 permutation
+
+const uint8_t S0[4][4] = {
+    {1, 0, 3, 2},
+    {3, 2, 1, 0},
+    {0, 2, 1, 3},
+    {3, 1, 3, 2}};
+const uint8_t S1[4][4] = {
+    {0, 1, 2, 3},
+    {2, 0, 1, 3},
+    {3, 0, 1, 0},
+    {2, 1, 0, 3}};
+
+// Permutation function
+uint8_t permute(uint8_t input, const uint8_t *table, size_t n) {
+    uint8_t output = 0;
+    for (size_t i = 0; i < n; i++) {
+        output |= ((input >> (7 - table[i])) & 1) << (7 - i);
+    }
+    return output;
+}
+
+// Rotate bits to the left
+uint16_t left_rotate(uint16_t key, size_t bits, size_t size) {
+    return ((key << bits) | (key >> (size - bits))) & ((1 << size) - 1);
+}
+
+// Generate subkeys for S-DES
+void generate_subkeys(uint16_t key, uint8_t *k1, uint8_t *k2) {
+    uint16_t permuted = permute(key, P10, 10);
+    uint8_t left = (permuted >> 5) & 0x1F, right = permuted & 0x1F;
+
+    left = left_rotate(left, 1, 5);
+    right = left_rotate(right, 1, 5);
+    *k1 = permute((left << 5) | right, P8, 8);
+
+    left = left_rotate(left, 2, 5);
+    right = left_rotate(right, 2, 5);
+    *k2 = permute((left << 5) | right, P8, 8);
+}
+
+// S-box substitution
+uint8_t sbox(uint8_t input, const uint8_t sbox[4][4]) {
+    uint8_t row = ((input & 0x8) >> 2) | (input & 0x1);
+    uint8_t col = (input >> 1) & 0x3;
+    return sbox[row][col];
+}
+
+// F-function for S-DES
+uint8_t f_function(uint8_t r, uint8_t subkey) {
+    uint8_t expanded = permute(r, EP, 8);
+    uint8_t xor_result = expanded ^ subkey;
+    uint8_t left = sbox((xor_result >> 4) & 0xF, S0);
+    uint8_t right = sbox(xor_result & 0xF, S1);
+    return permute((left << 2) | right, P4, 4);
+}
+
+// S-DES encryption
+uint8_t sdes_encrypt(uint8_t plaintext, uint16_t key) {
+    uint8_t k1, k2;
+    generate_subkeys(key, &k1, &k2);
+
+    uint8_t permuted = permute(plaintext, IP, 8);
+    uint8_t l = permuted >> 4, r = permuted & 0xF;
+
+    uint8_t temp = r ^ f_function(l, k1);
+    l ^= f_function(temp, k2);
+
+    return permute((temp << 4) | l, IP_INV, 8);
+}
+
+// S-DES decryption
+uint8_t sdes_decrypt(uint8_t ciphertext, uint16_t key) {
+    uint8_t k1, k2;
+    generate_subkeys(key, &k1, &k2);
+
+    uint8_t permuted = permute(ciphertext, IP, 8);
+    uint8_t l = permuted >> 4, r = permuted & 0xF;
+
+    uint8_t temp = r ^ f_function(l, k2);
+    l ^= f_function(temp, k1);
+
+    return permute((temp << 4) | l, IP_INV, 8);
+}
+
+// XOR two 8-bit blocks
+uint8_t xor_blocks(uint8_t block1, uint8_t block2) {
+    return block1 ^ block2;
+}
+
+// Main function
+int main() {
+    uint8_t iv = 0b10101010;                            // Initialization Vector
+    uint16_t key = 0b0111111101;                        // 10-bit key
+    uint8_t plaintext[2] = {0b00000001, 0b00100011};    // Binary plaintext
+    uint8_t ciphertext[2];                              // Ciphertext array
+    uint8_t decrypted[2];                               // Decrypted plaintext array
+
+    printf("S-DES CBC Mode Encryption/Decryption\n");
+
+    // Encrypt plaintext in CBC mode
+    uint8_t prev = iv;
+    for (size_t i = 0; i < 2; i++) {
+        uint8_t temp = xor_blocks(plaintext[i], prev); // XOR with previous ciphertext
+        ciphertext[i] = sdes_encrypt(temp, key);      // Encrypt
+        prev = ciphertext[i];                         // Update previous block
+    }
+
+    // Print ciphertext
+    printf("\nCiphertext:\n");
+    for (size_t i = 0; i < 2; i++) {
+        printf("%02X ", ciphertext[i]);
+    }
+    printf("\n");
+
+    // Decrypt ciphertext in CBC mode
+    prev = iv;
+    for (size_t i = 0; i < 2; i++) {
+        uint8_t temp = sdes_decrypt(ciphertext[i], key); // Decrypt
+        decrypted[i] = xor_blocks(temp, prev);         // XOR with previous ciphertext
+        prev = ciphertext[i];                          // Update previous block
+    }
+
+    // Print decrypted plaintext
+    printf("\nDecrypted Plaintext:\n");
+    for (size_t i = 0; i < 2; i++) {
+        printf("%02X ", decrypted[i]);
+    }
+    printf("\n");
+
+    return 0;
+}
