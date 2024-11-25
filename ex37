@@ -1,0 +1,96 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// English letter frequencies in decreasing order
+const char english_frequency[] = "etaoinshrdlcumwfgypbvkjxqz";
+
+// Function to calculate letter frequencies in the ciphertext
+void calculate_frequencies(const char *ciphertext, int *freq) {
+    for (int i = 0; i < 26; i++) {
+        freq[i] = 0; // Initialize frequencies to 0
+    }
+
+    for (int i = 0; ciphertext[i] != '\0'; i++) {
+        if (ciphertext[i] >= 'a' && ciphertext[i] <= 'z') {
+            freq[ciphertext[i] - 'a']++;
+        } else if (ciphertext[i] >= 'A' && ciphertext[i] <= 'Z') {
+            freq[ciphertext[i] - 'A']++;
+        }
+    }
+}
+
+// Function to sort letters based on their frequencies in descending order
+void sort_frequencies(int *freq, char *sorted_letters) {
+    for (int i = 0; i < 26; i++) {
+        sorted_letters[i] = 'a' + i;
+    }
+
+    // Bubble sort based on frequency
+    for (int i = 0; i < 25; i++) {
+        for (int j = 0; j < 25 - i; j++) {
+            if (freq[j] < freq[j + 1]) {
+                // Swap frequencies
+                int temp = freq[j];
+                freq[j] = freq[j + 1];
+                freq[j + 1] = temp;
+
+                // Swap corresponding letters
+                char temp_char = sorted_letters[j];
+                sorted_letters[j] = sorted_letters[j + 1];
+                sorted_letters[j + 1] = temp_char;
+            }
+        }
+    }
+}
+
+// Function to substitute letters based on frequency analysis
+void substitute(const char *ciphertext, const char *mapping, char *plaintext) {
+    for (int i = 0; ciphertext[i] != '\0'; i++) {
+        if (ciphertext[i] >= 'a' && ciphertext[i] <= 'z') {
+            plaintext[i] = mapping[ciphertext[i] - 'a'];
+        } else if (ciphertext[i] >= 'A' && ciphertext[i] <= 'Z') {
+            plaintext[i] = mapping[ciphertext[i] - 'A'] - 'a' + 'A';
+        } else {
+            plaintext[i] = ciphertext[i]; // Non-alphabetic characters remain unchanged
+        }
+    }
+    plaintext[strlen(ciphertext)] = '\0'; // Null-terminate the plaintext
+}
+
+// Generate and print the top N plaintexts
+void generate_top_plaintexts(const char *ciphertext, const char *sorted_letters, int top_n) {
+    char mapping[26];
+    char plaintext[1024];
+
+    printf("Top %d possible plaintexts:\n", top_n);
+    for (int i = 0; i < top_n && i < 26; i++) {
+        // Create the mapping based on the English frequency order
+        for (int j = 0; j < 26; j++) {
+            mapping[sorted_letters[j] - 'a'] = english_frequency[(j + i) % 26];
+        }
+        substitute(ciphertext, mapping, plaintext);
+        printf("Guess %d: %s\n", i + 1, plaintext);
+    }
+}
+
+int main() {
+    char ciphertext[1024];
+    int freq[26];
+    char sorted_letters[26];
+    int top_n;
+
+    printf("Enter the ciphertext: ");
+    fgets(ciphertext, sizeof(ciphertext), stdin);
+    ciphertext[strcspn(ciphertext, "\n")] = '\0'; // Remove the trailing newline
+
+    printf("Enter the number of top plaintext guesses to generate: ");
+    scanf("%d", &top_n);
+
+    calculate_frequencies(ciphertext, freq);
+    sort_frequencies(freq, sorted_letters);
+
+    generate_top_plaintexts(ciphertext, sorted_letters, top_n);
+
+    return 0;
+}
