@@ -1,0 +1,167 @@
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdlib.h>
+
+#define MAX_TEXT_LENGTH 1000
+#define ALPHABET_SIZE 100
+
+// English letter frequencies in descending order (percentages or relative frequencies)
+const double english_freqs[ALPHABET_SIZE] = {
+    0.082, 0.015, 0.028, 0.043, 0.127, 0.022, 0.020, 0.061, 0.069, 0.002,
+    0.008, 0.040, 0.024, 0.067, 0.075, 0.019, 0.001, 0.060, 0.063, 0.091,
+    0.028, 0.010, 0.023, 0.001, 0.020, 0.001, 0.020
+};
+
+// Function to calculate the frequency of letters in a string
+void calculate_frequencies(const char *text, int *frequencies) {
+    int length = 0;
+    // Initialize frequencies
+    for (int i = 0; i < ALPHABET_SIZE; i++) {
+        frequencies[i] = 0;
+    }
+
+    // Count the frequency of each letter (ignoring non-alphabetical characters)
+    for (int i = 0; text[i] != '\0'; i++) {
+        if (isalpha(text[i])) {
+            char letter = tolower(text[i]);
+            frequencies[letter - 'a']++;
+            length++;
+        }
+    }
+
+    // Normalize the frequencies to a scale between 0 and 1
+    for (int i = 0; i < ALPHABET_SIZE; i++) {
+        frequencies[i] = (double)frequencies[i] / length;
+    }
+}
+
+// Function to calculate a "score" for a given ciphertext based on frequency matching
+double score_text_by_frequency(int *frequencies) {
+    double score = 0;
+    for (int i = 0; i < ALPHABET_SIZE; i++) {
+        score += (frequencies[i] - english_freqs[i]) * (frequencies[i] - english_freqs[i]);
+    }
+    return score;
+}
+
+// Function to decrypt the ciphertext using a substitution key
+void decrypt_with_key(const char *ciphertext, char *plaintext, int *key) {
+    for (int i = 0; ciphertext[i] != '\0'; i++) {
+        if (isalpha(ciphertext[i])) {
+            char letter = tolower(ciphertext[i]);
+            plaintext[i] = key[letter - 'a'] + 'a';
+        } else {
+            plaintext[i] = ciphertext[i];
+        }
+    }
+    plaintext[strlen(ciphertext)] = '\0';  // Null-terminate the plaintext
+}
+
+// Function to perform a frequency attack
+void frequency_attack(const char *ciphertext) {
+    int frequencies[ALPHABET_SIZE];
+    calculate_frequencies(ciphertext, frequencies);
+
+    // Generate a list of possible letter mappings based on frequency analysis
+    int letter_mapping[ALPHABET_SIZE];
+    for (int i = 0; i < ALPHABET_SIZE; i++) {
+        letter_mapping[i] = i;
+    }
+
+    // Sort letters in the ciphertext by their frequency in descending order
+    int sorted_letters[ALPHABET_SIZE];
+    for (int i = 0; i < ALPHABET_SIZE; i++) {
+        sorted_letters[i] = i;
+    }
+
+    // Simple bubble sort to sort by frequency
+    for (int i = 0; i < ALPHABET_SIZE; i++) {
+        for (int j = i + 1; j < ALPHABET_SIZE; j++) {
+            if (frequencies[sorted_letters[i]] < frequencies[sorted_letters[j]]) {
+                int temp = sorted_letters[i];
+                sorted_letters[i] = sorted_letters[j];
+                sorted_letters[j] = temp;
+            }
+        }
+    }
+
+    // Now map the most frequent letters of the ciphertext to the most frequent letters in English
+    int key[ALPHABET_SIZE];
+    for (int i = 0; i < ALPHABET_SIZE; i++) {
+        key[sorted_letters[i]] = i;
+    }
+
+    // Decrypt the ciphertext using the generated key
+    char plaintext[MAX_TEXT_LENGTH];
+    decrypt_with_key(ciphertext, plaintext, key);
+
+    // Display the resulting plaintext
+    printf("Decrypted Text: %s\n", plaintext);
+}
+
+// Function to perform frequency analysis and show top 10 possible plaintexts
+void show_top_10_possible_plaintexts(const char *ciphertext) {
+    int num_top = 10;
+
+    // Generate possible mappings and score them
+    int top_scores[num_top];
+    char top_plaintexts[num_top][MAX_TEXT_LENGTH];
+
+    for (int i = 0; i < num_top; i++) {
+        top_scores[i] = 999999;  // Large initial score
+    }
+
+    for (int shift = 0; shift < ALPHABET_SIZE; shift++) {
+        char modified_ciphertext[MAX_TEXT_LENGTH];
+        for (int i = 0; i < strlen(ciphertext); i++) {
+            if (isalpha(ciphertext[i])) {
+                modified_ciphertext[i] = ciphertext[i] - shift;
+                if (modified_ciphertext[i] < 'a') modified_ciphertext[i] += 26;
+            } else {
+                modified_ciphertext[i] = ciphertext[i];
+            }
+        }
+        modified_ciphertext[strlen(ciphertext)] = '\0';
+
+        int frequencies[ALPHABET_SIZE];
+        calculate_frequencies(modified_ciphertext, frequencies);
+        double score = score_text_by_frequency(frequencies);
+
+        if (score < top_scores[num_top - 1]) {
+            top_scores[num_top - 1] = score;
+            strncpy(top_plaintexts[num_top - 1], modified_ciphertext, MAX_TEXT_LENGTH);
+            // Re-sort the list of scores and plaintexts
+            for (int j = num_top - 1; j > 0 && top_scores[j] < top_scores[j - 1]; j--) {
+                int temp_score = top_scores[j];
+                char temp_text[MAX_TEXT_LENGTH];
+                strncpy(temp_text, top_plaintexts[j], MAX_TEXT_LENGTH);
+
+                top_scores[j] = top_scores[j - 1];
+                strncpy(top_plaintexts[j], top_plaintexts[j - 1], MAX_TEXT_LENGTH);
+
+                top_scores[j - 1] = temp_score;
+                strncpy(top_plaintexts[j - 1], temp_text, MAX_TEXT_LENGTH);
+            }
+        }
+    }
+
+    // Show the top 10 plaintexts
+    printf("\nTop 10 possible plaintexts based on frequency analysis:\n");
+    for (int i = 0; i < num_top; i++) {
+        printf("%d: %s\n", i + 1, top_plaintexts[i]);
+    }
+}
+
+int main() {
+    char ciphertext[MAX_TEXT_LENGTH];
+    
+    // Input the ciphertext to attack
+    printf("Enter the ciphertext: ");
+    fgets(ciphertext, MAX_TEXT_LENGTH, stdin);
+    ciphertext[strcspn(ciphertext, "\n")] = 0;  // Remove newline character from input
+    
+    show_top_10_possible_plaintexts(ciphertext);
+
+    return 0;
+}
