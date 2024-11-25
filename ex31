@@ -1,0 +1,68 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
+// Function prototypes
+void left_shift(uint8_t *block, size_t block_size);
+void xor_with_constant(uint8_t *block, size_t block_size, uint8_t constant);
+void print_block(const uint8_t *block, size_t block_size);
+
+int main() {
+    const size_t block_size = 16; // Block size in bytes (16 bytes = 128 bits)
+    const uint8_t C128 = 0x87;    // Constant for 128-bit blocks
+    const uint8_t C64 = 0x1B;     // Constant for 64-bit blocks
+
+    // Simulated result of encrypting an all-zero block with a block cipher
+    uint8_t L[16] = {0x6B, 0xC1, 0xBE, 0xE2, 0x2E, 0x40, 0x9F, 0x96,
+                     0xE9, 0x3D, 0x7E, 0x11, 0x73, 0x93, 0x17, 0x2A};
+
+    printf("Initial L: ");
+    print_block(L, block_size);
+
+    // Generate K1
+    uint8_t K1[16];
+    memcpy(K1, L, block_size);
+    left_shift(K1, block_size);
+    if (L[0] & 0x80) { // Check if the most significant bit of L is 1
+        xor_with_constant(K1, block_size, C128);
+    }
+
+    printf("K1: ");
+    print_block(K1, block_size);
+
+    // Generate K2
+    uint8_t K2[16];
+    memcpy(K2, K1, block_size);
+    left_shift(K2, block_size);
+    if (K1[0] & 0x80) { // Check if the most significant bit of K1 is 1
+        xor_with_constant(K2, block_size, C128);
+    }
+
+    printf("K2: ");
+    print_block(K2, block_size);
+
+    return 0;
+}
+
+// Perform a left shift on a block of bytes
+void left_shift(uint8_t *block, size_t block_size) {
+    uint8_t carry = 0;
+    for (int i = block_size - 1; i >= 0; i--) {
+        uint8_t next_carry = (block[i] & 0x80) ? 1 : 0;
+        block[i] = (block[i] << 1) | carry;
+        carry = next_carry;
+    }
+}
+
+// XOR the block with a constant
+void xor_with_constant(uint8_t *block, size_t block_size, uint8_t constant) {
+    block[block_size - 1] ^= constant;
+}
+
+// Print the block as hex
+void print_block(const uint8_t *block, size_t block_size) {
+    for (size_t i = 0; i < block_size; i++) {
+        printf("%02X ", block[i]);
+    }
+    printf("\n");
+}
