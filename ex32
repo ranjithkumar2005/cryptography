@@ -1,0 +1,81 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
+#include <time.h>
+
+// Simulated values for demonstration
+#define PRIME_Q 101  // Small prime for simplicity (DSA q)
+#define PRIME_P 103  // Small prime for simplicity (DSA p)
+
+// RSA key structure
+typedef struct {
+    uint64_t n; // Modulus
+    uint64_t d; // Private key exponent
+    uint64_t e; // Public key exponent
+} RSA_Key;
+
+// Function prototypes
+uint64_t mod_exp(uint64_t base, uint64_t exp, uint64_t mod);
+uint64_t generate_random(uint64_t max);
+void dsa_sign(uint64_t message, uint64_t *r, uint64_t *s);
+uint64_t rsa_sign(uint64_t message, RSA_Key rsa_key);
+
+int main() {
+    // Initialize random seed
+    srand(time(NULL));
+
+    // Message to sign
+    uint64_t message = 42;
+
+    // DSA signature generation
+    printf("DSA Signatures:\n");
+    for (int i = 0; i < 3; i++) {
+        uint64_t r, s;
+        dsa_sign(message, &r, &s);
+        printf("Signature %d: (r = %llu, s = %llu)\n", i + 1, r, s);
+    }
+
+    // RSA key setup
+    RSA_Key rsa_key = {n: 3233, d: 2753, e: 17}; // Example RSA keypair
+
+    // RSA signature generation
+    printf("\nRSA Signatures:\n");
+    for (int i = 0; i < 3; i++) {
+        uint64_t signature = rsa_sign(message, rsa_key);
+        printf("Signature %d: %llu\n", i + 1, signature);
+    }
+
+    return 0;
+}
+
+// Modular exponentiation
+uint64_t mod_exp(uint64_t base, uint64_t exp, uint64_t mod) {
+    uint64_t result = 1;
+    base = base % mod;
+    while (exp > 0) {
+        if (exp % 2 == 1) { // If exp is odd
+            result = (result * base) % mod;
+        }
+        exp = exp >> 1; // Divide exp by 2
+        base = (base * base) % mod;
+    }
+    return result;
+}
+
+// Generate a random number up to max
+uint64_t generate_random(uint64_t max) {
+    return rand() % max + 1;
+}
+
+// DSA signature generation (simplified)
+void dsa_sign(uint64_t message, uint64_t *r, uint64_t *s) {
+    uint64_t k = generate_random(PRIME_Q - 1); // Random per-signature value
+    *r = mod_exp(2, k, PRIME_P) % PRIME_Q;    // r = (2^k mod p) mod q
+    *s = (message + k * (*r)) % PRIME_Q;      // s = (message + k * r) mod q
+}
+
+// RSA signature generation
+uint64_t rsa_sign(uint64_t message, RSA_Key rsa_key) {
+    return mod_exp(message, rsa_key.d, rsa_key.n); // Signature = message^d mod n
+}
